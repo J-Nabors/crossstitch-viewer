@@ -17,3 +17,5 @@ Patterns and thread keys are processed in the browser. The public repository con
 ## Running from source
 
 Serve the repository root over HTTP, for example with `python -m http.server 8000`, and open `http://localhost:8000/`. For GitHub Pages, select **Deploy from a branch**, then **main** and **/ (root)** in the repository's Pages settings. The app needs no build step.
+
+When releasing changes to the page, styles, or app modules, update their shared `?v=` suffix in `index.html` and `app.mjs` so browsers load matching assets. When updating the vendored PDF.js library, update `pdfVersion` in `patterns.mjs` for both the library and its worker.

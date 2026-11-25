@@ -1,6 +1,6 @@
-import { openPdf, readPdfPattern, readThreadKey, renderPage, readImage, readColorGrid, readOxs } from './patterns.mjs';
-import { demoPattern } from './demo.mjs';
-import { readProgress, writeProgress, encodeProgress, decodeProgress, mergeProgress } from './progress.mjs';
+import { openPdf, readPdfPattern, readThreadKey, renderPage, readImage, readColorGrid, readOxs } from './patterns.mjs?v=3';
+import { demoPattern } from './demo.mjs?v=3';
+import { readProgress, writeProgress, encodeProgress, decodeProgress, mergeProgress } from './progress.mjs?v=3';
 
 const byId = id => document.getElementById(id);
 const chart = byId('chart');

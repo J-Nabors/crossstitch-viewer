@@ -1,4 +1,5 @@
 const pdfRoot = new URL('./vendor/pdfjs/build/', import.meta.url);
+const pdfVersion = '4.10.38';
 const privateSymbol = /^[\uE000-\uF8FF]$/u;
 
 export function rgbHex(red, green, blue) {
@@ -6,8 +7,8 @@ export function rgbHex(red, green, blue) {
 }
 
 export async function openPdf(bytes) {
-  const pdfjs = await import(new URL('pdf.mjs', pdfRoot).href);
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdf.worker.mjs', pdfRoot).href;
+  const pdfjs = await import(new URL(`pdf.mjs?v=${pdfVersion}`, pdfRoot).href);
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(`pdf.worker.mjs?v=${pdfVersion}`, pdfRoot).href;
   return pdfjs.getDocument({ data: bytes, isEvalSupported: false, useSystemFonts: true }).promise;
 }
 
