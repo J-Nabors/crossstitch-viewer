@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Highlight thread colors and track your cross-stitch progress.">
+  <title>Stitch Focus</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">✣</span> Stitch Focus</div>
+    <div class="header-actions">
+      <button id="open-key" class="button secondary">Add thread key</button>
+      <button id="open-pattern" class="button primary">Open pattern</button>
+      <input id="pattern-file" type="file" accept=".pdf,.png,application/pdf,image/png" hidden>
+      <input id="key-file" type="file" accept=".pdf,application/pdf" hidden>
+    </div>
+  </header>
+  <main>
+    <div class="project">
+      <div>
+        <h1 id="project-name">Greenhouse sampler</h1>
+        <p id="project-meta"></p>
+      </div>
+      <button id="demo" class="button secondary" hidden>Open sample</button>
+    </div>
+    <p id="status" class="notice" role="status" hidden></p>
+    <section id="setup" class="setup" aria-labelledby="setup-title" hidden>
+      <h2 id="setup-title">Match the stitch grid</h2>
+      <p>Enter the number of stitches across and down. Use the full image for a tightly cropped pattern, or pick two opposite corners of the chart.</p>
+      <div class="setup-actions">
+        <label id="page-control" hidden>PDF page <select id="source-page"></select></label>
+        <label>Columns <input id="columns" type="number" min="1" max="1500"></label>
+        <label>Rows <input id="rows" type="number" min="1" max="1500"></label>
+        <button id="full-image" class="button secondary">Use full image</button>
+        <button id="pick-bounds" class="button secondary">Pick corners</button>
+        <button id="apply-grid" class="button primary">Read stitches</button>
+      </div>
+      <p id="setup-hint"></p>
+    </section>
+    <div class="workspace">
+      <section class="chart-panel panel" aria-label="Pattern viewer">
+        <div class="chart-tools">
+          <div class="tool-group zoom" aria-label="Zoom controls">
+            <button id="zoom-out" class="icon-button" aria-label="Zoom out">−</button>
+            <button id="fit" class="text-button" title="Fit to view">Fit</button>
+            <button id="zoom-in" class="icon-button" aria-label="Zoom in">+</button>
+            <output id="zoom-value" aria-label="Zoom relative to fit"></output>
+          </div>
+          <div class="tool-group">
+            <label for="focus-mode">Other colors</label>
+            <select id="focus-mode"><option value="fade">Fade</option><option value="gray">Grayscale</option><option value="isolate">Hide</option></select>
+          </div>
+          <details class="grid-settings">
+            <summary>Grid settings</summary>
+            <div class="grid-popover">
+              <label><input id="show-grid" type="checkbox" checked> Show 10-stitch lines</label>
+              <label for="grid-color">Line color <input id="grid-color" type="color" value="#394e43"></label>
+              <label for="grid-weight">Line weight <select id="grid-weight"><option value="0.6">Thin</option><option value="1.15" selected>Medium</option><option value="2.2">Thick</option></select></label>
+            </div>
+          </details>
+        </div>
+        <div id="viewport" class="viewport" tabindex="0" aria-label="Scrollable stitch chart">
+          <div id="chart-space" class="chart-space">
+            <div id="sheet" class="sheet">
+              <canvas id="chart" aria-label="Stitch colors. Use the thread palette to select a color by keyboard."></canvas>
+              <div id="ruler-x" class="ruler ruler-x" aria-hidden="true"></div>
+              <div id="ruler-y" class="ruler ruler-y" aria-hidden="true"></div>
+              <div id="crop-guide" hidden></div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-footer"><span id="chart-hint">Click a stitch or select a thread to focus it.</span><output id="coordinate"></output></div>
+      </section>
+      <aside class="palette panel" aria-labelledby="palette-title">
+        <div class="palette-header">
+          <h2 id="palette-title">Thread palette</h2>
+          <p id="progress-text"></p>
+          <progress id="progress" max="1" value="0" aria-label="Threads completed"></progress>
+          <div class="palette-controls">
+            <input id="thread-search" type="search" placeholder="Find a thread" aria-label="Find a thread">
+            <select id="thread-filter" aria-label="Filter threads"><option value="all">All threads</option><option value="todo">To do</option><option value="done">Completed</option></select>
+          </div>
+        </div>
+        <div id="focus-bar" class="focus-bar" hidden><span id="focus-text" aria-live="polite"></span><button id="clear-focus" class="text-button">Clear</button></div>
+        <ul id="threads" class="threads"></ul>
+        <div class="palette-footer">Use the checkboxes to mark whole colors complete.</div>
+      </aside>
+    </div>
+    <footer class="site-footer"><span>Pattern files stay in this browser.</span><span>Progress is saved on this device.</span></footer>
+  </main>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>
