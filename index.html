@@ -11,9 +11,10 @@
   <header class="site-header">
     <div class="brand"><span class="brand-mark" aria-hidden="true">✣</span> Stitch Focus</div>
     <div class="header-actions">
+      <button id="open-backup" class="button secondary">Progress backup</button>
       <button id="open-key" class="button secondary">Add thread key</button>
       <button id="open-pattern" class="button primary">Open pattern</button>
-      <input id="pattern-file" type="file" accept=".pdf,.png,application/pdf,image/png" hidden>
+      <input id="pattern-file" type="file" accept=".pdf,.oxs,.png,.jpg,.jpeg,.gif" hidden>
       <input id="key-file" type="file" accept=".pdf,application/pdf" hidden>
     </div>
   </header>
@@ -48,30 +49,36 @@
             <button id="zoom-in" class="icon-button" aria-label="Zoom in">+</button>
             <output id="zoom-value" aria-label="Zoom relative to fit"></output>
           </div>
-          <div class="tool-group">
-            <label for="focus-mode">Other colors</label>
-            <select id="focus-mode"><option value="fade">Fade</option><option value="gray">Grayscale</option><option value="isolate">Hide</option></select>
-          </div>
+          <fieldset class="focus-controls">
+            <legend>Other colors</legend>
+            <label for="other-opacity">Opacity <input id="other-opacity" type="range" min="0" max="100" value="18"> <output id="opacity-value" for="other-opacity">18%</output></label>
+            <label for="other-saturation">Saturation <input id="other-saturation" type="range" min="0" max="100" value="100"> <output id="saturation-value" for="other-saturation">100%</output></label>
+          </fieldset>
           <details class="grid-settings">
             <summary>Grid settings</summary>
             <div class="grid-popover">
               <label><input id="show-grid" type="checkbox" checked> Show 10-stitch lines</label>
+              <label><input id="show-minor-grid" type="checkbox"> Show 1 × 1 grid</label>
               <label for="grid-color">Line color <input id="grid-color" type="color" value="#394e43"></label>
               <label for="grid-weight">Line weight <select id="grid-weight"><option value="0.6">Thin</option><option value="1.15" selected>Medium</option><option value="2.2">Thick</option></select></label>
             </div>
           </details>
         </div>
-        <div id="viewport" class="viewport" tabindex="0" aria-label="Scrollable stitch chart">
-          <div id="chart-space" class="chart-space">
-            <div id="sheet" class="sheet">
-              <canvas id="chart" aria-label="Stitch colors. Use the thread palette to select a color by keyboard."></canvas>
-              <div id="ruler-x" class="ruler ruler-x" aria-hidden="true"></div>
-              <div id="ruler-y" class="ruler ruler-y" aria-hidden="true"></div>
-              <div id="crop-guide" hidden></div>
+        <div id="chart-frame" class="chart-frame">
+          <div class="ruler ruler-top" aria-hidden="true"><div id="ruler-top" class="ruler-track"></div></div>
+          <div class="ruler ruler-left" aria-hidden="true"><div id="ruler-left" class="ruler-track"></div></div>
+          <div id="viewport" class="viewport" tabindex="0" aria-label="Scrollable stitch chart">
+            <div id="chart-space" class="chart-space">
+              <div id="sheet" class="sheet">
+                <canvas id="chart" aria-label="Stitch colors. Use the thread palette to select colors by keyboard."></canvas>
+                <div id="crop-guide" hidden></div>
+              </div>
             </div>
           </div>
+          <div class="ruler ruler-right" aria-hidden="true"><div id="ruler-right" class="ruler-track"></div></div>
+          <div class="ruler ruler-bottom" aria-hidden="true"><div id="ruler-bottom" class="ruler-track"></div></div>
         </div>
-        <div class="chart-footer"><span id="chart-hint">Click a stitch or select a thread to focus it.</span><output id="coordinate"></output></div>
+        <div class="chart-footer"><span id="chart-hint">Click stitches or threads to toggle their colors.</span><output id="coordinate"></output></div>
       </section>
       <aside class="palette panel" aria-labelledby="palette-title">
         <div class="palette-header">
@@ -83,13 +90,30 @@
             <select id="thread-filter" aria-label="Filter threads"><option value="all">All threads</option><option value="todo">To do</option><option value="done">Completed</option></select>
           </div>
         </div>
-        <div id="focus-bar" class="focus-bar" hidden><span id="focus-text" aria-live="polite"></span><button id="clear-focus" class="text-button">Clear</button></div>
+        <div id="focus-bar" class="focus-bar" hidden><span id="focus-text" aria-live="polite"></span><button id="clear-focus" class="text-button">Clear selection</button></div>
         <ul id="threads" class="threads"></ul>
         <div class="palette-footer">Use the checkboxes to mark whole colors complete.</div>
       </aside>
     </div>
     <footer class="site-footer"><span>Pattern files stay in this browser.</span><span>Progress is saved on this device.</span></footer>
   </main>
+  <dialog id="backup-dialog" class="backup-dialog" aria-labelledby="backup-title">
+    <form method="dialog">
+      <div class="backup-heading">
+        <h2 id="backup-title">Progress backup</h2>
+        <button class="text-button" autofocus>Close</button>
+      </div>
+    </form>
+    <p>Copy this code to back up all saved thread checkmarks. On another device, paste it here, choose Import code, and open the same pattern file.</p>
+    <label for="backup-code">Progress code</label>
+    <textarea id="backup-code" rows="4" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+    <label class="backup-restore"><input id="backup-replace" type="checkbox"> Replace checkmarks for patterns in the code</label>
+    <p id="backup-status" role="status"></p>
+    <div class="backup-actions">
+      <button id="copy-backup" class="button secondary">Copy code</button>
+      <button id="import-backup" class="button primary">Import code</button>
+    </div>
+  </dialog>
   <script type="module" src="./app.mjs"></script>
 </body>
 </html>

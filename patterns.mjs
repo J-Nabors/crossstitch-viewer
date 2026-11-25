@@ -68,14 +68,15 @@ function chartGeometry(items) {
   return { stitches, pitch, firstX, firstY, col, row };
 }
 
-function sampleColors(image, x, y, dx, dy) {
+function sampleColors(image, x, y, dx, dy, approximate = false) {
   const colors = new Map();
+  const channel = approximate ? value => Math.min(255, Math.round(value / 16) * 16) : value => value;
   for (const fy of [.14, .25, .5, .75, .86]) {
     for (const fx of [.14, .25, .5, .75, .86]) {
       const px = Math.max(0, Math.min(image.width - 1, Math.floor(x + dx * fx)));
       const py = Math.max(0, Math.min(image.height - 1, Math.floor(y + dy * fy)));
       const index = (px + py * image.width) * 4;
-      const color = image.data[index + 3] < 128 ? null : rgbHex(...image.data.subarray(index, index + 3));
+      const color = image.data[index + 3] < 128 ? null : rgbHex(channel(image.data[index]), channel(image.data[index + 1]), channel(image.data[index + 2]));
       colors.set(color, (colors.get(color) || 0) + 1);
     }
   }
@@ -174,7 +175,59 @@ export async function readThreadKey(pdf) {
   return key;
 }
 
-export async function readPng(file) {
+export function readOxs(text) {
+  if (/<!DOCTYPE/i.test(text)) throw new Error('Choose an OXS chart without a document type declaration.');
+  const document = new DOMParser().parseFromString(text, 'application/xml');
+  const chart = document.documentElement;
+  if (chart.localName !== 'chart' || chart.querySelector('parsererror')) throw new Error('This file is not a valid Open Cross Stitch chart.');
+  const properties = chart.querySelector(':scope > properties');
+  const palette = chart.querySelector(':scope > palette');
+  const stitches = chart.querySelector(':scope > fullstitches');
+  function integer(element, attribute) {
+    const value = element?.getAttribute(attribute);
+    return /^\d+$/.test(value ?? '') ? Number(value) : NaN;
+  }
+  const width = integer(properties, 'chartwidth');
+  const height = integer(properties, 'chartheight');
+  if (!(width >= 1 && width <= 1500 && height >= 1 && height <= 1500 && palette && stitches)) {
+    throw new Error('The OXS chart needs a palette, a full-stitch section, and dimensions between 1 and 1,500 stitches.');
+  }
+  const colors = new Map();
+  for (const entry of palette.children) {
+    if (entry.localName !== 'palette_item') continue;
+    const index = integer(entry, 'index');
+    if (!(index > 0 && Number.isSafeInteger(index))) continue;
+    const color = (entry.getAttribute('color') || entry.getAttribute('printcolor') || '').replace(/^#/, '').toLowerCase();
+    if (!/^[0-9a-f]{6}$/.test(color)) continue;
+    const name = [entry.getAttribute('number'), entry.getAttribute('name')]
+      .filter(Boolean).map(value => value.trim().replace(/\s+/g, ' ')).filter(Boolean).join(' · ');
+    colors.set(String(index), { color: '#' + color, name: name || undefined });
+  }
+  const ids = new Array(width * height).fill(null);
+  let count = 0;
+  for (const stitch of stitches.children) {
+    if (stitch.localName !== 'stitch') continue;
+    const index = integer(stitch, 'palindex');
+    if (index === 0) continue;
+    const id = String(index);
+    const x = integer(stitch, 'x');
+    const y = integer(stitch, 'y');
+    if (!(x >= 0 && x < width && y >= 0 && y < height && colors.has(id))) {
+      throw new Error('An OXS full stitch is outside the grid or refers to a missing thread color.');
+    }
+    const position = y * width + x;
+    if (ids[position] !== null && ids[position] !== id) {
+      throw new Error('This OXS chart places different full crosses in the same square.');
+    }
+    ids[position] = id;
+    count++;
+  }
+  if (!count) throw new Error('This OXS chart contains no full crosses.');
+  const omitted = Boolean(chart.querySelector('partstitches > *, backstitches > *, ornaments_inc_knots_and_beads > *'));
+  return { title: properties.getAttribute('charttitle')?.trim(), width, height, ids, colors, source: 'OXS chart', omitted };
+}
+
+export async function readImage(file) {
   const bitmap = await createImageBitmap(file);
   const ratio = Math.min(1, 4096 / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
@@ -183,7 +236,30 @@ export async function readPng(file) {
   const context = canvas.getContext('2d', { willReadFrequently: true });
   context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
-  return { canvas, context };
+  return { canvas, context, approximate: /\.jpe?g$/i.test(file.name) };
+}
+
+function groupJpegColors(counts) {
+  const groups = new Map();
+  const palette = [];
+  for (const [hex] of [...counts].sort((a, b) => b[1] - a[1])) {
+    const rgb = [1, 3, 5].map(offset => Number.parseInt(hex.slice(offset, offset + 2), 16));
+    let nearest;
+    let closest = 28 ** 2;
+    for (const choice of palette) {
+      const distance = (rgb[0] - choice.rgb[0]) ** 2 + (rgb[1] - choice.rgb[1]) ** 2 + (rgb[2] - choice.rgb[2]) ** 2;
+      if (distance < closest) {
+        closest = distance;
+        nearest = choice;
+      }
+    }
+    if (!nearest) {
+      nearest = { hex, rgb };
+      palette.push(nearest);
+    }
+    groups.set(hex, nearest.hex);
+  }
+  return groups;
 }
 
 export function readColorGrid(source, bounds, width, height) {
@@ -194,15 +270,19 @@ export function readColorGrid(source, bounds, width, height) {
   if (w < width || h < height) throw new Error('The selected area needs at least one image pixel per stitch. Check the corners and dimensions.');
   const pixels = source.context.getImageData(x, y, w, h);
   const ids = new Array(width * height);
-  const colors = new Map();
+  const counts = new Map();
   for (let row = 0; row < height; row++) {
     for (let col = 0; col < width; col++) {
-      const color = sampleColors(pixels, col * w / width, row * h / height, w / width, h / height);
+      const color = sampleColors(pixels, col * w / width, row * h / height, w / width, h / height, source.approximate);
       ids[row * width + col] = color;
-      if (color && !colors.has(color)) colors.set(color, { color, name: color.toUpperCase() });
-      if (colors.size > 512) throw new Error('More than 512 colors were found. Check the grid and use a flat-color chart or an original pixel pattern.');
+      if (color) counts.set(color, (counts.get(color) || 0) + 1);
+      if (!source.approximate && counts.size > 512) throw new Error('More than 512 colors were found. Check the grid and use a flat-color chart or an original pixel pattern.');
     }
   }
-  if (!colors.size) throw new Error('No colored stitches were found in the selected area.');
-  return { width, height, ids, colors, source: 'Color grid' };
+  if (!counts.size) throw new Error('No colored stitches were found in the selected area.');
+  const grouped = source.approximate ? groupJpegColors(counts) : null;
+  const palette = grouped ? new Set(grouped.values()) : counts.keys();
+  if (grouped && palette.size > 512) throw new Error('More than 512 colors were found. Use a flat-color PNG or an original pixel pattern.');
+  const colors = new Map([...palette].map(color => [color, { color, name: color.toUpperCase() }]));
+  return { width, height, ids: grouped ? ids.map(id => id === null ? null : grouped.get(id)) : ids, colors, source: 'Color grid' };
 }
